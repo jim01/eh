@@ -1,0 +1,136 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.0'
+	id 'io.spring.dependency-management' version '1.1.6'
+	id 'checkstyle'
+}
+
+springBoot {
+	mainClass = 'org.example.equiphealth.EquipHealthApplication'
+}
+
+group = 'org.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(23)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: '3.1.0'
+	implementation 'org.hibernate:hibernate-envers:6.6.3.Final'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	//developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+checkstyle {
+	toolVersion = "10.12.5"
+	configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+	maxWarnings = 0
+}
+
+task cleanBuild {
+	group = 'build'
+	description = 'Clean and build the project'
+	dependsOn clean, build
+}
+
+task testWithCoverage {
+	group = 'verification'
+	description = 'Run tests with coverage report'
+	dependsOn test
+}
+
+task codeQuality {
+	group = 'verification'
+	description = 'Run all code quality checks'
+	dependsOn checkstyleMain, checkstyleTest, test
+}
+
+bootJar {
+	archiveBaseName = 'equiphealth'
+	archiveVersion = project.version
+	manifest {
+		attributes(
+			'Implementation-Title': project.name,
+			'Implementation-Version': project.version,
+			'Created-By': System.getProperty('java.version') + ' (' + System.getProperty('java.vendor') + ')',
+			'Start-Class': 'org.example.equiphealth.EquipHealthApplication',
+			'Main-Class': 'org.springframework.boot.loader.launch.JarLauncher'
+		)
+	}
+}
+
+task projectInfo {
+	group = 'help'
+	description = 'Display project information'
+	doLast {
+		println """
+			Project: ${project.name}
+			Version: ${project.version}
+			Java Version: ${java.toolchain.languageVersion.get()}
+			Spring Boot Version: ${project.properties['spring-boot.version']}
+		"""
+	}
+}
+
+task runDev {
+	group = 'application'
+	description = 'Run application with dev profile'
+	doFirst {
+		bootRun.systemProperty 'spring.profiles.active', 'dev'
+	}
+	finalizedBy bootRun
+}
+
+task checkDependencies {
+	group = 'help'
+	description = 'Display dependency updates'
+	doLast {
+		configurations.all { config ->
+			if (config.canBeResolved) {
+				println "Configuration: ${config.name}"
+				config.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+					println "${artifact.moduleVersion.id}"
+				}
+			}
+		}
+	}
+}
+
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+	options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation']
+}
+
+test {
+	testLogging {
+		events "passed", "skipped", "failed"
+		exceptionFormat = 'full'
+		showStandardStreams = true
+	}
+}
